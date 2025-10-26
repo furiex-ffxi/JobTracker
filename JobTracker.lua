@@ -29,6 +29,8 @@ local defaults = {
     debug = false,
 }
 
+defaults.font_size = 12
+
 local settings = config.load(defaults)
 settings.pos = settings.pos or { x = defaults.pos.x, y = defaults.pos.y }
 settings.pos.x = tonumber(settings.pos.x) or defaults.pos.x
@@ -76,27 +78,48 @@ settings.assignments = assignments
 
 local base_pos = settings.pos
 
+local font_size = tonumber(settings.font_size) or defaults.font_size
+settings.font_size = font_size
+
 local function save_settings()
     settings.round_names = sanitize_round_names(settings.round_names)
     assignments = sanitize_assignments(assignments)
     settings.assignments = assignments
     settings.pos.x = tonumber(base_pos.x) or defaults.pos.x
     settings.pos.y = tonumber(base_pos.y) or defaults.pos.y
+    settings.font_size = font_size
     config.save(settings, 'all')
 end
 
 local spacing_px = 0 -- horizontal spacing between labels
 local palette_spacing_px = 10 -- horizontal spacing between palette labels
-local font_size = 12
 local columns = 11 -- two rows of 11 (palette)
 local cell_width = 40 -- fixed width per label to avoid extents timing
 local row_spacing = 6 -- vertical spacing between palette rows
+local palette_offset_y = 14
 
 local grid_cell_w = 60
 local grid_col_spacing = 0
 local grid_cell_h = font_size + 10
 local grid_label_w = 40
 local handle_gap_y = font_size + 10
+
+local function recalc_layout_metrics()
+    spacing_px = math.max(4, math.floor(font_size * 0.9))
+    grid_col_spacing = spacing_px
+    palette_spacing_px = math.max(6, math.floor(font_size * 0.6))
+    cell_width = math.max(36, math.floor(font_size * 3))
+    row_spacing = math.max(4, math.floor(font_size * 0.5))
+    grid_cell_w = math.max(48, math.floor(font_size * 4.2))
+    grid_cell_h = math.max(font_size + 6, math.floor(font_size * 1.6))
+    grid_label_w = math.max(32, math.floor(font_size * 2.4))
+    handle_gap_y = math.max(font_size + 6, math.floor(font_size * 1.8))
+    palette_offset_y = math.max(12, math.floor(font_size * 1.2))
+end
+
+recalc_layout_metrics()
+
+local current_font_size = font_size
 
 local job_texts = {} -- job_name => texts object (palette)
 local drag_handle -- small handle to drag whole group
@@ -128,6 +151,35 @@ local function create_text()
     })
     t:show()
     return t
+end
+
+local function apply_font_size_to_text(t)
+    if t and type(t.size) == 'function' then
+        pcall(function() t:size(font_size) end)
+    end
+end
+
+local function apply_font_size_to_all()
+    if current_font_size == font_size then
+        return
+    end
+    current_font_size = font_size
+    recalc_layout_metrics()
+    for _, job in ipairs(jobs) do
+        apply_font_size_to_text(job_texts[job])
+    end
+    for r = 1, grid_rows do
+        apply_font_size_to_text(row_labels[r])
+        if grid_cells[r] then
+            for c = 1, grid_cols do
+                apply_font_size_to_text(grid_cells[r][c])
+            end
+        end
+    end
+    for c = 1, grid_cols do
+        apply_font_size_to_text(col_labels[c])
+    end
+    apply_font_size_to_text(drag_handle)
 end
 
 local function ensure_texts()
@@ -221,9 +273,50 @@ local function get_handle_text()
     return '[JT]'
 end
 
+local function set_font_size(new_size)
+    if not new_size then return end
+    local size = math.floor(new_size)
+    if size < 8 then size = 8 end
+    if size > 48 then size = 48 end
+    if size == font_size then
+        return
+    end
+    font_size = size
+    settings.font_size = font_size
+    current_font_size = nil -- force refresh on next layout update
+    recalc_layout_metrics()
+    save_settings()
+end
+
+local function summarize_round(idx)
+    local header = (settings.round_names and settings.round_names[idx] and settings.round_names[idx] ~= '') and settings.round_names[idx] or ('R%d'):format(idx)
+    local entries = {}
+    for r = 1, grid_rows do
+        local val = assignments[r][idx]
+        if val and val ~= '' then
+            table.insert(entries, ('P%d %s'):format(r, val))
+        end
+    end
+    if #entries == 0 then
+        return string.format('%s: --', header)
+    end
+    return string.format('%s: %s', header, table.concat(entries, ', '))
+end
+
+local function send_rounds_to_party()
+    for c = 1, grid_cols do
+        local summary = summarize_round(c)
+        if summary then
+            windower.send_command(string.format('input /p %s', summary))
+        end
+    end
+end
+
 local function update_display()
     ensure_texts()
     ensure_grid()
+    recalc_layout_metrics()
+    apply_font_size_to_all()
     -- position drag handle
     if not drag_handle then
         drag_handle = texts.new('[JT]', {
@@ -242,7 +335,7 @@ local function update_display()
     for c = 1, grid_cols do
         local header = (settings.round_names and settings.round_names[c] and settings.round_names[c] ~= '') and settings.round_names[c] or ('R%d'):format(c)
         local hx = base_pos.x + grid_label_w + (c - 1) * (grid_cell_w + grid_col_spacing)
-        local hy = base_pos.y - (font_size - 2)
+        local hy = base_pos.y - (font_size + 2)
         col_labels[c]:text(('\\cs(200,200,200)%s\\cr'):format(header))
         col_labels[c]:pos(hx, hy)
     end
@@ -265,38 +358,9 @@ local function update_display()
             grid_cells[r][c]:pos(cx, cy)
         end
     end
-    drag_handle:text(get_handle_text())
-
-    -- Grid headers
-    for c = 1, grid_cols do
-        local header = (settings.round_names and settings.round_names[c] and settings.round_names[c] ~= '') and settings.round_names[c] or ('R%d'):format(c)
-        local hx = base_pos.x + grid_label_w + (c - 1) * (grid_cell_w + spacing_px)
-        local hy = base_pos.y - (font_size + 2)
-        col_labels[c]:text(('\\cs(200,200,200)%s\\cr'):format(header))
-        col_labels[c]:pos(hx, hy)
-    end
-    -- Grid rows + cells
-    for r = 1, grid_rows do
-        local ry = base_pos.y + (r - 1) * grid_cell_h
-        row_labels[r]:text(('\\cs(200,200,200)P%d\\cr'):format(r))
-        row_labels[r]:pos(base_pos.x, ry)
-        for c = 1, grid_cols do
-            local val = assignments[r][c]
-            local cx = base_pos.x + grid_label_w + (c - 1) * (grid_cell_w + spacing_px)
-            local cy = ry
-            local label
-            if val then
-                label = ("%s%s\\cr"):format(job_colors.used, val)
-            else
-                label = '\\cs(150,150,150)--\\cr'
-            end
-            grid_cells[r][c]:text(label)
-            grid_cells[r][c]:pos(cx, cy)
-        end
-    end
 
     -- Palette in two rows
-    local palette_y = base_pos.y + grid_rows * grid_cell_h + 14
+    local palette_y = base_pos.y + grid_rows * grid_cell_h + palette_offset_y
     for i, job in ipairs(jobs) do
         local t = job_texts[job]
         local color
@@ -320,7 +384,7 @@ end
 
 update_display()
 
--- Commands: round1/2/3, reset; debug on/off/toggle
+-- Commands: round1/2/3, reset; debug on/off/toggle; font <size>; share/party
 windower.register_event('addon command', function(...)
     local args = {...}
     local cmd = args[1] and args[1]:lower()
@@ -356,6 +420,17 @@ windower.register_event('addon command', function(...)
         end
         selected_job = nil
         save_settings()
+    elseif cmd == 'font' or cmd == 'fontsize' then
+        local size = tonumber(args[2])
+        if size then
+            set_font_size(size)
+            windower.add_to_chat(207, ('JT font size set to %d'):format(font_size))
+        else
+            windower.add_to_chat(207, ('JT font size: %d'):format(font_size))
+        end
+    elseif cmd == 'share' or cmd == 'party' then
+        send_rounds_to_party()
+        windower.add_to_chat(207, 'JT: sent rounds to party chat')
     end
     update_display()
 end)
