@@ -113,7 +113,8 @@ local function recalc_layout_metrics()
     grid_cell_w = math.max(48, math.floor(font_size * 4.2))
     grid_cell_h = math.max(font_size + 6, math.floor(font_size * 1.6))
     grid_label_w = math.max(32, math.floor(font_size * 2.4))
-    handle_gap_y = math.max(font_size + 6, math.floor(font_size * 1.8))
+    -- ensure drag handle sits comfortably above the column headers
+    handle_gap_y = math.max(font_size + 14, math.floor(font_size * 2.4))
     palette_offset_y = math.max(12, math.floor(font_size * 1.2))
 end
 
