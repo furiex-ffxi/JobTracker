@@ -435,7 +435,7 @@ windower.register_event('addon command', function(...)
     update_display()
 end)
 
--- Mouse: left-click a job to select; left-click a grid cell to assign; right-click a grid cell to clear
+-- Mouse: left-click a job to select; left-click a grid cell to assign or clear
 -- Left click down/up handling similar to common Windower patterns
 do
     local mouse_moved = true
@@ -502,12 +502,12 @@ do
                     return true
                 end
             end
-            -- grid assignment (only when a job is selected)
-            if selected_job then
-                for r = 1, grid_rows do
-                    for c = 1, grid_cols do
-                        local t = grid_cells[r][c]
-                        if safe_hover(t, x, y) and not mouse_moved then
+            -- grid assignment or clearing
+            for r = 1, grid_rows do
+                for c = 1, grid_cols do
+                    local t = grid_cells[r][c]
+                    if safe_hover(t, x, y) and not mouse_moved then
+                        if selected_job then
                             dbg(('assign %s -> (%d,%d)'):format(selected_job, r, c))
                             local pr, pc = find_assignment(selected_job)
                             if pr and pc then
@@ -518,8 +518,13 @@ do
                             save_settings()
                             selected_job = nil
                             update_display()
-                            return true
+                        elseif assignments[r][c] ~= nil then
+                            dbg(('clear (%d,%d) %s'):format(r, c, tostring(assignments[r][c])))
+                            assignments[r][c] = nil
+                            save_settings()
+                            update_display()
                         end
+                        return true
                     end
                 end
             end
