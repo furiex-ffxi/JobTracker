@@ -85,6 +85,7 @@ local function save_settings()
     config.save(settings, 'all')
 end
 
+local spacing_px = 0 -- horizontal spacing between labels
 local palette_spacing_px = 10 -- horizontal spacing between palette labels
 local font_size = 12
 local columns = 11 -- two rows of 11 (palette)
@@ -94,7 +95,7 @@ local row_spacing = 6 -- vertical spacing between palette rows
 local grid_cell_w = 60
 local grid_col_spacing = 0
 local grid_cell_h = font_size + 10
-local grid_label_w = 24
+local grid_label_w = 40
 local handle_gap_y = font_size + 10
 
 local job_texts = {} -- job_name => texts object (palette)
