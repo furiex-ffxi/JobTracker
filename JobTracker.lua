@@ -29,7 +29,7 @@ local defaults = {
     debug = false,
 }
 
-defaults.font_size = 12
+defaults.font_size = 14
 
 local settings = config.load(defaults)
 settings.pos = settings.pos or { x = defaults.pos.x, y = defaults.pos.y }
@@ -267,9 +267,6 @@ local function find_assignment(job)
 end
 
 local function get_handle_text()
-    if settings.round_names and settings.round_names[1] and settings.round_names[1] ~= '' then
-        return string.format('[JT: %s]', settings.round_names[1])
-    end
     return '[JT]'
 end
 
@@ -308,6 +305,7 @@ local function send_rounds_to_party()
         local summary = summarize_round(c)
         if summary then
             windower.send_command(string.format('input /p %s', summary))
+            coroutine.sleep(2) -- avoid spamming too fast
         end
     end
 end
@@ -335,7 +333,7 @@ local function update_display()
     for c = 1, grid_cols do
         local header = (settings.round_names and settings.round_names[c] and settings.round_names[c] ~= '') and settings.round_names[c] or ('R%d'):format(c)
         local hx = base_pos.x + grid_label_w + (c - 1) * (grid_cell_w + grid_col_spacing)
-        local hy = base_pos.y - (font_size + 2)
+        local hy = base_pos.y - (font_size + 8)
         col_labels[c]:text(('\\cs(200,200,200)%s\\cr'):format(header))
         col_labels[c]:pos(hx, hy)
     end
