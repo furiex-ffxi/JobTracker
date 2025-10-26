@@ -1,16 +1,19 @@
 # JobTracker
 
-**JobTracker** is a Windower addon to help you track job usage for Odyssey Shael Gaol runs. It visually displays the 22 available jobs, color-coded by their usage status during a charge run.
+JobTracker is a Windower addon to plan and track job usage for Odyssey Sheol Gaol runs. It shows a 6×3 assignment grid (party slots P1–P6 by three rounds R1–R3) and a clickable palette of all 22 jobs.
 
 ## Features
 
-- Tracks all 22 jobs (WAR, MNK, WHM, etc.)
-- Color codes:
-  - **Blue**: Unused jobs
-  - **Yellow**: Jobs currently in use for a charge
-  - **Red**: Used jobs (already spent for a charge)
-- Simple commands to update job status
-- Easy reset for new runs
+- 22-job palette (WAR, MNK, WHM, … RUN)
+- 6×3 grid for assignments (P1–P6 rows, R1–R3 columns)
+- Color coding:
+  - Blue: Job not assigned in any round
+  - Yellow: Job assigned somewhere in the grid
+  - Green: Currently selected job in the palette
+- Click to select and assign jobs; right‑click to clear cells
+- Draggable handle to move the UI; font size control
+- Rename round headers and share a summary to party chat
+- Settings persist across sessions (position, font, names, assignments)
 
 ## Installation
 
@@ -20,32 +23,43 @@
    //lua load JobTracker
    ```
 
-## Usage
+## UI and Interaction
 
-Use the following commands in-game to update job statuses:
+- Left‑click a job in the palette to select/deselect it (turns green).
+- With a job selected, left‑click a grid cell (P1–P6 × R1–R3) to assign it.
+- Right‑click a grid cell to clear its assignment.
+- Drag the `[JT]` handle to reposition the entire UI.
+- Assigned jobs are unique: assigning a job moves it from any previous cell.
 
-- Mark a job as **used** (yellow):
-  ```
-  //jt use JOB
-  ```
-  Example: `//jt use WAR`
+## Commands
 
-- Mark a job as **unused** (blue):
-  ```
-  //jt unused JOB
-  ```
-  Example: `//jt unused WAR`
+Use `//jobtracker` or `//jt` followed by one of the commands below:
 
-- **Reset** all jobs to unused (blue):
-  ```
-  //jt reset
-  ```
+- Round names
+  - `//jt round1 <name>`
+  - `//jt round2 <name>`
+  - `//jt round3 <name>`
+  - Sets the column headers (defaults are R1, R2, R3).
+
+- Reset
+  - `//jt reset`
+  - Clears all assignments and deselects the current job.
+
+- Font size
+  - `//jt font` — shows current size
+  - `//jt font <8–48>` — sets size and updates layout
+
+- Share to party chat
+  - `//jt share` or `//jt party`
+  - Prints one line per round, e.g. `R1: P1 WAR, P3 COR, …`
+
+- Debug
+  - `//jt debug [on|off|toggle]`
+  - Toggles verbose logging to chat for troubleshooting.
 
 ## Notes
 
-- The display will update automatically as you use the commands.
-- You can customize the display position and appearance by editing the `JobTracker.lua` file.
+- The UI saves position, font size, round names, and assignments automatically.
+- Colors and behavior match the current addon logic; there is no “red” state.
 
----
-
-Enjoy your runs and keep track of your jobs#
+Enjoy and good luck with your runs!
