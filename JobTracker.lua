@@ -19,23 +19,72 @@ local job_colors = {
 }
 
 -- Settings (persisted)
+local grid_rows = 6
+local grid_cols = 3
+
 local defaults = {
     pos = { x = 100, y = 200 },
     round_names = { '', '', '' },
     assignments = {},
     debug = false,
 }
+
 local settings = config.load(defaults)
 settings.pos = settings.pos or { x = defaults.pos.x, y = defaults.pos.y }
-settings.round_names = settings.round_names or { '', '', '' }
-for i = 1, 3 do
-    settings.round_names[i] = settings.round_names[i] or ''
-end
-settings.assignments = settings.assignments or {}
+settings.pos.x = tonumber(settings.pos.x) or defaults.pos.x
+settings.pos.y = tonumber(settings.pos.y) or defaults.pos.y
 settings.debug = settings.debug ~= nil and settings.debug or false
 
--- UI layout settings
+local function sanitize_round_names(source)
+    local sanitized = {}
+    if type(source) == 'table' then
+        for i = 1, grid_cols do
+            local value = source[i] or source[tostring(i)]
+            sanitized[i] = type(value) == 'string' and value or ''
+        end
+    else
+        for i = 1, grid_cols do
+            sanitized[i] = ''
+        end
+    end
+    return sanitized
+end
+
+local function sanitize_assignments(source)
+    local sanitized = {}
+    if type(source) == 'table' then
+        for r = 1, grid_rows do
+            sanitized[r] = {}
+            local row = source[r] or source[tostring(r)]
+            if type(row) == 'table' then
+                for c = 1, grid_cols do
+                    local value = row[c] or row[tostring(c)]
+                    sanitized[r][c] = type(value) == 'string' and value or nil
+                end
+            end
+        end
+    end
+    for r = 1, grid_rows do
+        sanitized[r] = sanitized[r] or {}
+    end
+    return sanitized
+end
+
+settings.round_names = sanitize_round_names(settings.round_names)
+local assignments = sanitize_assignments(settings.assignments)
+settings.assignments = assignments
+
 local base_pos = settings.pos
+
+local function save_settings()
+    settings.round_names = sanitize_round_names(settings.round_names)
+    assignments = sanitize_assignments(assignments)
+    settings.assignments = assignments
+    settings.pos.x = tonumber(base_pos.x) or defaults.pos.x
+    settings.pos.y = tonumber(base_pos.y) or defaults.pos.y
+    config.save(settings, 'all')
+end
+
 local spacing_px = 10 -- horizontal spacing between labels
 local font_size = 12
 local columns = 11 -- two rows of 11 (palette)
@@ -43,14 +92,10 @@ local cell_width = 40 -- fixed width per label to avoid extents timing
 local row_spacing = 6 -- vertical spacing between rows
 local handle_width = 28 -- space reserved for drag handle
 
--- Planning grid
-local grid_rows = 6
-local grid_cols = 3
 local grid_cell_w = 44
 local grid_cell_h = font_size + row_spacing
 local grid_label_w = 24
 
--- One text object per job for precise click detection
 local job_texts = {} -- job_name => texts object (palette)
 local drag_handle -- small handle to drag whole group
 local grid_cells = {} -- [row][col] -> text object
@@ -58,7 +103,6 @@ local row_labels = {} -- [row] -> text object
 local col_labels = {} -- [col] -> text object
 
 -- Assignments (persisted)
-local assignments = settings.assignments
 for r = 1, grid_rows do
     assignments[r] = assignments[r] or {}
 end
@@ -253,12 +297,14 @@ windower.register_event('addon command', function(...)
 
     if cmd == 'round1' or cmd == 'round2' or cmd == 'round3' then
         local idx = tonumber(cmd:match('(%d)$'))
-        local name = ''
-        if #args >= 2 then
-            name = table.concat(args, ' ', 2)
+        if idx and idx >= 1 and idx <= grid_cols then
+            local name = ''
+            if #args >= 2 then
+                name = table.concat(args, ' ', 2)
+            end
+            settings.round_names[idx] = name
+            save_settings()
         end
-        settings.round_names[idx] = name
-        config.save(settings, 'all')
     elseif cmd == 'debug' then
         local arg = (args[2] or ''):lower()
         if arg == 'on' or arg == '1' or arg == 'true' then
@@ -268,7 +314,7 @@ windower.register_event('addon command', function(...)
         else
             settings.debug = not settings.debug
         end
-        config.save(settings, 'all')
+        save_settings()
         windower.add_to_chat(207, ('JT debug: %s'):format(settings.debug and 'on' or 'off'))
     elseif cmd == 'reset' then
         for r = 1, grid_rows do
@@ -278,7 +324,7 @@ windower.register_event('addon command', function(...)
             end
         end
         selected_job = nil
-        config.save(settings, 'all')
+        save_settings()
     end
     update_display()
 end)
@@ -333,7 +379,7 @@ do
                 dragging = false
                 settings.pos.x = base_pos.x
                 settings.pos.y = base_pos.y
-                config.save(settings, 'all')
+                save_settings()
                 return true
             end
             -- palette selection
@@ -363,7 +409,7 @@ do
                                 assignments[pr][pc] = nil
                             end
                             assignments[r][c] = selected_job
-                            config.save(settings, 'all')
+                            save_settings()
                             selected_job = nil
                             update_display()
                             return true
@@ -381,7 +427,7 @@ do
                 dragging = false
                 settings.pos.x = base_pos.x
                 settings.pos.y = base_pos.y
-                config.save(settings, 'all')
+                save_settings()
                 return true
             end
             for r = 1, grid_rows do
@@ -390,7 +436,7 @@ do
                     if safe_hover(t, x, y) and not mouse_moved then
                         dbg(('clear (%d,%d) %s'):format(r, c, tostring(assignments[r][c])))
                         assignments[r][c] = nil
-                        config.save(settings, 'all')
+                        save_settings()
                         update_display()
                         return true
                     end
@@ -425,5 +471,5 @@ windower.register_event('unload', function()
     if drag_handle and type(drag_handle.destroy) == 'function' then pcall(function() drag_handle:destroy() end) end
     settings.pos.x = base_pos.x
     settings.pos.y = base_pos.y
-    config.save(settings, 'all')
+    save_settings()
 end)
