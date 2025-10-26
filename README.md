@@ -27,7 +27,7 @@ JobTracker is a Windower addon to plan and track job usage for Odyssey Sheol Gao
 
 - Left‑click a job in the palette to select/deselect it (turns green).
 - With a job selected, left‑click a grid cell (P1–P6 × R1–R3) to assign it.
-- Right‑click a grid cell to clear its assignment.
+- Left‑click a grid cell with no job selected to clear its assignment.
 - Drag the `[JT]` handle to reposition the entire UI.
 - Assigned jobs are unique: assigning a job moves it from any previous cell.
 
