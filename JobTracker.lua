@@ -264,6 +264,35 @@ local function update_display()
             grid_cells[r][c]:pos(cx, cy)
         end
     end
+    drag_handle:text(get_handle_text())
+
+    -- Grid headers
+    for c = 1, grid_cols do
+        local header = (settings.round_names and settings.round_names[c] and settings.round_names[c] ~= '') and settings.round_names[c] or ('R%d'):format(c)
+        local hx = base_pos.x + grid_label_w + (c - 1) * (grid_cell_w + spacing_px)
+        local hy = base_pos.y - (font_size + 2)
+        col_labels[c]:text(('\\cs(200,200,200)%s\\cr'):format(header))
+        col_labels[c]:pos(hx, hy)
+    end
+    -- Grid rows + cells
+    for r = 1, grid_rows do
+        local ry = base_pos.y + (r - 1) * grid_cell_h
+        row_labels[r]:text(('\\cs(200,200,200)P%d\\cr'):format(r))
+        row_labels[r]:pos(base_pos.x, ry)
+        for c = 1, grid_cols do
+            local val = assignments[r][c]
+            local cx = base_pos.x + grid_label_w + (c - 1) * (grid_cell_w + spacing_px)
+            local cy = ry
+            local label
+            if val then
+                label = ("%s%s\\cr"):format(job_colors.used, val)
+            else
+                label = '\\cs(150,150,150)--\\cr'
+            end
+            grid_cells[r][c]:text(label)
+            grid_cells[r][c]:pos(cx, cy)
+        end
+    end
 
     -- Palette in two rows
     local palette_y = base_pos.y + grid_rows * grid_cell_h + 14
