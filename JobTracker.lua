@@ -85,16 +85,17 @@ local function save_settings()
     config.save(settings, 'all')
 end
 
-local spacing_px = 10 -- horizontal spacing between labels
+local palette_spacing_px = 10 -- horizontal spacing between palette labels
 local font_size = 12
 local columns = 11 -- two rows of 11 (palette)
 local cell_width = 40 -- fixed width per label to avoid extents timing
-local row_spacing = 6 -- vertical spacing between rows
-local handle_width = 28 -- space reserved for drag handle
+local row_spacing = 6 -- vertical spacing between palette rows
 
-local grid_cell_w = 44
-local grid_cell_h = font_size + row_spacing
+local grid_cell_w = 60
+local grid_col_spacing = 0
+local grid_cell_h = font_size + 10
 local grid_label_w = 24
+local handle_gap_y = font_size + 10
 
 local job_texts = {} -- job_name => texts object (palette)
 local drag_handle -- small handle to drag whole group
@@ -225,14 +226,43 @@ local function update_display()
     -- position drag handle
     if not drag_handle then
         drag_handle = texts.new('[JT]', {
-            pos = { x = base_pos.x, y = base_pos.y - (font_size + 4) },
+            pos = { x = base_pos.x, y = base_pos.y - handle_gap_y },
             text = { size = font_size },
             bg = { alpha = 128 },
             flags = { draggable = false },
         })
         drag_handle:show()
     else
-        drag_handle:pos(base_pos.x, base_pos.y - (font_size + 4))
+        drag_handle:pos(base_pos.x, base_pos.y - handle_gap_y)
+    end
+    drag_handle:text(get_handle_text())
+
+    -- Grid headers
+    for c = 1, grid_cols do
+        local header = (settings.round_names and settings.round_names[c] and settings.round_names[c] ~= '') and settings.round_names[c] or ('R%d'):format(c)
+        local hx = base_pos.x + grid_label_w + (c - 1) * (grid_cell_w + grid_col_spacing)
+        local hy = base_pos.y - (font_size - 2)
+        col_labels[c]:text(('\\cs(200,200,200)%s\\cr'):format(header))
+        col_labels[c]:pos(hx, hy)
+    end
+    -- Grid rows + cells
+    for r = 1, grid_rows do
+        local ry = base_pos.y + (r - 1) * grid_cell_h
+        row_labels[r]:text(('\\cs(200,200,200)P%d\\cr'):format(r))
+        row_labels[r]:pos(base_pos.x, ry)
+        for c = 1, grid_cols do
+            local val = assignments[r][c]
+            local cx = base_pos.x + grid_label_w + (c - 1) * (grid_cell_w + grid_col_spacing)
+            local cy = ry
+            local label
+            if val then
+                label = ("%s%s\\cr"):format(job_colors.used, val)
+            else
+                label = '\\cs(150,150,150)--\\cr'
+            end
+            grid_cells[r][c]:text(label)
+            grid_cells[r][c]:pos(cx, cy)
+        end
     end
     drag_handle:text(get_handle_text())
 
@@ -281,7 +311,7 @@ local function update_display()
         local idx = i - 1
         local prow = math.floor(idx / columns)
         local pcol = idx % columns
-        local px = base_pos.x + handle_width + spacing_px + pcol * (cell_width + spacing_px)
+        local px = base_pos.x + pcol * (cell_width + palette_spacing_px)
         local py = palette_y + prow * (font_size + row_spacing)
         t:pos(px, py)
     end
