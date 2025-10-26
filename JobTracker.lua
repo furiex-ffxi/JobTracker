@@ -103,6 +103,7 @@ local grid_col_spacing = 0
 local grid_cell_h = font_size + 10
 local grid_label_w = 40
 local handle_gap_y = font_size + 10
+local handle_offset_x = 0
 
 local function recalc_layout_metrics()
     spacing_px = math.max(4, math.floor(font_size * 0.9))
@@ -114,6 +115,7 @@ local function recalc_layout_metrics()
     grid_cell_h = math.max(font_size + 6, math.floor(font_size * 1.6))
     grid_label_w = math.max(32, math.floor(font_size * 2.4))
     handle_gap_y = math.max(font_size + 6, math.floor(font_size * 1.8))
+    handle_offset_x = math.max(12, math.floor(font_size * 1.2))
     palette_offset_y = math.max(12, math.floor(font_size * 1.2))
 end
 
@@ -318,14 +320,14 @@ local function update_display()
     -- position drag handle
     if not drag_handle then
         drag_handle = texts.new('[JT]', {
-            pos = { x = base_pos.x, y = base_pos.y - handle_gap_y },
+            pos = { x = base_pos.x - handle_offset_x, y = base_pos.y - handle_gap_y },
             text = { size = font_size },
             bg = { alpha = 128 },
             flags = { draggable = false },
         })
         drag_handle:show()
     else
-        drag_handle:pos(base_pos.x, base_pos.y - handle_gap_y)
+        drag_handle:pos(base_pos.x - handle_offset_x, base_pos.y - handle_gap_y)
     end
     drag_handle:text(get_handle_text())
 
