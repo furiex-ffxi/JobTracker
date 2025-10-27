@@ -2,6 +2,10 @@
 
 JobTracker is a Windower addon to plan and track job usage for Odyssey Sheol Gaol runs. It shows a 6×3 assignment grid (party slots P1–P6 by three rounds R1–R3) and a clickable palette of all 22 jobs.
 
+<img width="555" height="235" alt="image" src="https://github.com/user-attachments/assets/87838287-ab03-471b-b412-7fccd88a3f26" />
+
+<img width="487" height="58" alt="image" src="https://github.com/user-attachments/assets/ac1e66e2-2fdf-41e9-817f-7bffed1b7688" />
+
 ## Features
 
 - 22-job palette (WAR, MNK, WHM, … RUN)
