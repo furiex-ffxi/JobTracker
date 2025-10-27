@@ -12,7 +12,7 @@ JobTracker is a Windower addon to plan and track job usage for Odyssey Sheol Gao
   - Green: Currently selected job in the palette
 - Click to select and assign jobs; right‑click to clear cells
 - Draggable handle to move the UI; font size control
-- Rename round headers and share a summary to party chat
+- Rename round headers and player rows, and share a summary to party chat
 - Settings persist across sessions (position, font, names, assignments)
 
 ## Installation
@@ -41,6 +41,10 @@ Use `//jobtracker` or `//jt` followed by one of the commands below:
   - `//jt round3 <name>`
   - Sets the column headers (defaults are R1, R2, R3).
 
+- Player names
+  - `//jt player1 <name>` through `//jt player6 <name>`
+  - Sets the row labels (defaults are P1–P6).
+
 - Reset
   - `//jt reset`
   - Clears all assignments and deselects the current job.
@@ -51,7 +55,7 @@ Use `//jobtracker` or `//jt` followed by one of the commands below:
 
 - Share to party chat
   - `//jt share` or `//jt party`
-  - Prints one line per round, e.g. `R1: P1 WAR, P3 COR, …`
+  - Prints one line per round, e.g. `Round A: Tank WAR, Support COR, …`
 
 - Debug
   - `//jt debug [on|off|toggle]`
@@ -59,7 +63,7 @@ Use `//jobtracker` or `//jt` followed by one of the commands below:
 
 ## Notes
 
-- The UI saves position, font size, round names, and assignments automatically.
+- The UI saves position, font size, round names, player names, and assignments automatically.
 - Colors and behavior match the current addon logic; there is no “red” state.
 
 Enjoy and good luck with your runs!

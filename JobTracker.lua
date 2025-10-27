@@ -25,6 +25,7 @@ local grid_cols = 3
 local defaults = {
     pos = { x = 100, y = 200 },
     round_names = { '', '', '' },
+    player_names = { '', '', '', '', '', '' },
     assignments = {},
     debug = false,
 }
@@ -52,6 +53,21 @@ local function sanitize_round_names(source)
     return sanitized
 end
 
+local function sanitize_player_names(source)
+    local sanitized = {}
+    if type(source) == 'table' then
+        for i = 1, grid_rows do
+            local value = source[i] or source[tostring(i)]
+            sanitized[i] = type(value) == 'string' and value or ''
+        end
+    else
+        for i = 1, grid_rows do
+            sanitized[i] = ''
+        end
+    end
+    return sanitized
+end
+
 local function sanitize_assignments(source)
     local sanitized = {}
     if type(source) == 'table' then
@@ -73,6 +89,7 @@ local function sanitize_assignments(source)
 end
 
 settings.round_names = sanitize_round_names(settings.round_names)
+settings.player_names = sanitize_player_names(settings.player_names)
 local assignments = sanitize_assignments(settings.assignments)
 settings.assignments = assignments
 
@@ -81,8 +98,47 @@ local base_pos = settings.pos
 local font_size = tonumber(settings.font_size) or defaults.font_size
 settings.font_size = font_size
 
+local function ustring_len(str)
+    if type(str) ~= 'string' then
+        return 0
+    end
+    if windower and windower.ustring and type(windower.ustring.len) == 'function' then
+        local ok, res = pcall(windower.ustring.len, str)
+        if ok and type(res) == 'number' then
+            return res
+        end
+    end
+    local _, count = str:gsub('[%z\1-\127\194-\244][\128-\191]*', '')
+    return count
+end
+
+local function get_round_label(idx)
+    local header = settings.round_names[idx]
+    if header and header ~= '' then
+        return header
+    end
+    return ('R%d'):format(idx)
+end
+
+local function get_player_label(idx)
+    local label = settings.player_names[idx]
+    if label and label ~= '' then
+        return label
+    end
+    return ('P%d'):format(idx)
+end
+
+local function estimate_text_width(text)
+    local length = ustring_len(text or '')
+    if length <= 0 then
+        return 0
+    end
+    return math.floor(length * font_size * 0.6)
+end
+
 local function save_settings()
     settings.round_names = sanitize_round_names(settings.round_names)
+    settings.player_names = sanitize_player_names(settings.player_names)
     assignments = sanitize_assignments(assignments)
     settings.assignments = assignments
     settings.pos.x = tonumber(base_pos.x) or defaults.pos.x
@@ -91,7 +147,6 @@ local function save_settings()
     config.save(settings, 'all')
 end
 
-local spacing_px = 0 -- horizontal spacing between labels
 local palette_spacing_px = 10 -- horizontal spacing between palette labels
 local columns = 11 -- two rows of 11 (palette)
 local cell_width = 40 -- fixed width per label to avoid extents timing
@@ -106,14 +161,39 @@ local handle_gap_y = font_size + 10
 local handle_offset_x = 0
 
 local function recalc_layout_metrics()
-    spacing_px = math.max(4, math.floor(font_size * 0.9))
-    grid_col_spacing = spacing_px
+    local longest_round_width = 0
+    for c = 1, grid_cols do
+        longest_round_width = math.max(longest_round_width, estimate_text_width(get_round_label(c)))
+    end
+
+    local longest_player_width = 0
+    for r = 1, grid_rows do
+        longest_player_width = math.max(longest_player_width, estimate_text_width(get_player_label(r)))
+    end
+
+    local longest_assignment_width = estimate_text_width('--')
+    for r = 1, grid_rows do
+        for c = 1, grid_cols do
+            local val = assignments[r][c]
+            if val and val ~= '' then
+                longest_assignment_width = math.max(longest_assignment_width, estimate_text_width(val))
+            end
+        end
+    end
+    for _, job in ipairs(jobs) do
+        longest_assignment_width = math.max(longest_assignment_width, estimate_text_width(job))
+    end
+
+    grid_col_spacing = math.max(8, math.floor(font_size * 0.3))
     palette_spacing_px = math.max(6, math.floor(font_size * 0.6))
-    cell_width = math.max(36, math.floor(font_size * 3))
     row_spacing = math.max(4, math.floor(font_size * 0.5))
-    grid_cell_w = math.max(48, math.floor(font_size * 4.2))
     grid_cell_h = math.max(font_size + 6, math.floor(font_size * 1.6))
-    grid_label_w = math.max(32, math.floor(font_size * 2.4))
+    grid_label_w = math.max(32, longest_player_width + math.floor(font_size * 0.9))
+
+    local desired_cell_width = math.max(longest_assignment_width, longest_round_width) + math.floor(font_size * 1.4)
+    grid_cell_w = math.max(48, desired_cell_width)
+    cell_width = math.max(36, longest_assignment_width + math.floor(font_size * 1.0))
+
     handle_gap_y = math.max(font_size + 6, math.floor(font_size * 1.8))
     handle_offset_x = math.max(12, math.floor(font_size * 1.2))
     palette_offset_y = math.max(12, math.floor(font_size * 1.2))
@@ -288,12 +368,12 @@ local function set_font_size(new_size)
 end
 
 local function summarize_round(idx)
-    local header = (settings.round_names and settings.round_names[idx] and settings.round_names[idx] ~= '') and settings.round_names[idx] or ('R%d'):format(idx)
+    local header = get_round_label(idx)
     local entries = {}
     for r = 1, grid_rows do
         local val = assignments[r][idx]
         if val and val ~= '' then
-            table.insert(entries, ('P%d %s'):format(r, val))
+            table.insert(entries, ('%s %s'):format(get_player_label(r), val))
         end
     end
     if #entries == 0 then
@@ -333,7 +413,7 @@ local function update_display()
 
     -- Grid headers
     for c = 1, grid_cols do
-        local header = (settings.round_names and settings.round_names[c] and settings.round_names[c] ~= '') and settings.round_names[c] or ('R%d'):format(c)
+        local header = get_round_label(c)
         local hx = base_pos.x + grid_label_w + (c - 1) * (grid_cell_w + grid_col_spacing)
         local hy = base_pos.y - (font_size + 8)
         col_labels[c]:text(('\\cs(200,200,200)%s\\cr'):format(header))
@@ -342,7 +422,7 @@ local function update_display()
     -- Grid rows + cells
     for r = 1, grid_rows do
         local ry = base_pos.y + (r - 1) * grid_cell_h
-        row_labels[r]:text(('\\cs(200,200,200)P%d\\cr'):format(r))
+        row_labels[r]:text(('\\cs(200,200,200)%s\\cr'):format(get_player_label(r)))
         row_labels[r]:pos(base_pos.x, ry)
         for c = 1, grid_cols do
             local val = assignments[r][c]
@@ -398,6 +478,16 @@ windower.register_event('addon command', function(...)
                 name = table.concat(args, ' ', 2)
             end
             settings.round_names[idx] = name
+            save_settings()
+        end
+    elseif cmd:match('^player%d+$') then
+        local idx = tonumber(cmd:match('player(%d+)'))
+        if idx and idx >= 1 and idx <= grid_rows then
+            local name = ''
+            if #args >= 2 then
+                name = table.concat(args, ' ', 2)
+            end
+            settings.player_names[idx] = name
             save_settings()
         end
     elseif cmd == 'debug' then
