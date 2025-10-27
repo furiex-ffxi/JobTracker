@@ -53,12 +53,32 @@ local function sanitize_round_names(source)
     return sanitized
 end
 
+local function normalize_player_name(name)
+    if type(name) ~= 'string' then
+        return ''
+    end
+    local trimmed = name:match('^%s*(.-)%s*$') or ''
+    if trimmed == '' then
+        return ''
+    end
+    local first = trimmed:sub(1, 1):upper()
+    local rest = trimmed:sub(2)
+    if rest ~= '' then
+        rest = rest:lower()
+    end
+    return first .. rest
+end
+
 local function sanitize_player_names(source)
     local sanitized = {}
     if type(source) == 'table' then
         for i = 1, grid_rows do
             local value = source[i] or source[tostring(i)]
-            sanitized[i] = type(value) == 'string' and value or ''
+            if type(value) == 'string' then
+                sanitized[i] = normalize_player_name(value)
+            else
+                sanitized[i] = ''
+            end
         end
     else
         for i = 1, grid_rows do
@@ -120,12 +140,42 @@ local function get_round_label(idx)
     return ('R%d'):format(idx)
 end
 
-local function get_player_label(idx)
+local function get_player_full_label(idx)
     local label = settings.player_names[idx]
     if label and label ~= '' then
         return label
     end
     return ('P%d'):format(idx)
+end
+
+local function truncate_label(label, max_chars)
+    if type(label) ~= 'string' or max_chars <= 0 then
+        return ''
+    end
+    if ustring_len(label) <= max_chars then
+        return label
+    end
+    if windower and windower.ustring and type(windower.ustring.sub) == 'function' then
+        local ok, truncated = pcall(windower.ustring.sub, label, 1, max_chars)
+        if ok and type(truncated) == 'string' then
+            return truncated
+        end
+    end
+    local result = {}
+    local count = 0
+    for uchar in label:gmatch('[%z\1-\127\194-\244][\128-\191]*') do
+        count = count + 1
+        if count > max_chars then
+            break
+        end
+        table.insert(result, uchar)
+    end
+    return table.concat(result)
+end
+
+local function get_player_label(idx)
+    local full_label = get_player_full_label(idx)
+    return truncate_label(full_label, 3)
 end
 
 local function estimate_text_width(text)
@@ -373,7 +423,7 @@ local function summarize_round(idx)
     for r = 1, grid_rows do
         local val = assignments[r][idx]
         if val and val ~= '' then
-            table.insert(entries, ('%s %s'):format(get_player_label(r), val))
+            table.insert(entries, ('%s %s'):format(get_player_full_label(r), val))
         end
     end
     if #entries == 0 then
@@ -480,14 +530,15 @@ windower.register_event('addon command', function(...)
             settings.round_names[idx] = name
             save_settings()
         end
-    elseif cmd:match('^player%d+$') then
-        local idx = tonumber(cmd:match('player(%d+)'))
+    elseif cmd:match('^player%d+$') or cmd:match('^p%d+$') then
+        local idx = cmd:match('player(%d+)') or cmd:match('p(%d+)')
+        idx = tonumber(idx)
         if idx and idx >= 1 and idx <= grid_rows then
             local name = ''
             if #args >= 2 then
                 name = table.concat(args, ' ', 2)
             end
-            settings.player_names[idx] = name
+            settings.player_names[idx] = normalize_player_name(name)
             save_settings()
         end
     elseif cmd == 'debug' then
@@ -521,6 +572,15 @@ windower.register_event('addon command', function(...)
     elseif cmd == 'share' or cmd == 'party' then
         send_rounds_to_party()
         windower.add_to_chat(207, 'JT: sent rounds to party chat')
+    elseif cmd == 'help' then
+        windower.add_to_chat(207, 'JT commands:')
+        windower.add_to_chat(207, '  round1/round2/round3 <name> - set round headers')
+        windower.add_to_chat(207, '  player1-player6 <name> or p1-p6 <name> - set player names')
+        windower.add_to_chat(207, '  font <8-48> - set font size, or omit value to view current size')
+        windower.add_to_chat(207, '  share / party - send round summary to party chat')
+        windower.add_to_chat(207, '  reset - clear all assignments')
+        windower.add_to_chat(207, '  debug [on|off|toggle] - control debug logging')
+        windower.add_to_chat(207, '  help - show this list')
     end
     update_display()
 end)
