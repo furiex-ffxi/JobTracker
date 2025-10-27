@@ -13,6 +13,7 @@ JobTracker is a Windower addon to plan and track job usage for Odyssey Sheol Gao
 - Click to select and assign jobs; right‑click to clear cells
 - Draggable handle to move the UI; font size control
 - Rename round headers and player rows, and share a summary to party chat
+- Player labels show the first three characters in the UI while preserving full names for chat sharing
 - Settings persist across sessions (position, font, names, assignments)
 
 ## Installation
@@ -43,7 +44,10 @@ Use `//jobtracker` or `//jt` followed by one of the commands below:
 
 - Player names
   - `//jt player1 <name>` through `//jt player6 <name>`
+  - `//jt p1 <name>` through `//jt p6 <name>` (alias for the above)
   - Sets the row labels (defaults are P1–P6).
+  - Names are stored with the first letter capitalized and the rest lowercase.
+  - Only the first three characters show in the UI; the full name is used for chat output.
 
 - Reset
   - `//jt reset`
@@ -60,6 +64,10 @@ Use `//jobtracker` or `//jt` followed by one of the commands below:
 - Debug
   - `//jt debug [on|off|toggle]`
   - Toggles verbose logging to chat for troubleshooting.
+
+- Help
+  - `//jt help`
+  - Prints the list of available commands to chat.
 
 ## Notes
 
