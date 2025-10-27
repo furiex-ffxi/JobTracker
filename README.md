@@ -13,7 +13,6 @@ JobTracker is a Windower addon to plan and track job usage for Odyssey Sheol Gao
 - Color coding:
   - Blue: Job not assigned in any round
   - Yellow: Job assigned somewhere in the grid
-  - Green: Currently selected job in the palette
 - Click to select and assign jobs; right‑click to clear cells
 - Draggable handle to move the UI; font size control
 - Rename round headers and player rows, and share a summary to party chat
